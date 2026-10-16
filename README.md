@@ -78,6 +78,8 @@ Notes:
 - 2D images are represented as tensors of shape `B,C,H,W` , with `C=1` (grayscale), `C=2` (real and imaginary parts, e.g. MRI) or `C=3` (RGB) channels, of any size.
 - Noise levels are read from `physics.noise_model`, or given with the keywords `sigma` (Gaussian), `gain` (Poisson)
   and `l` (Gamma). `sigma` given alone is used as the exact noise standard deviation, scalar or per pixel.
+  For denoising, per-pixel maps extend their boundary values into RAM 2's internal padding,
+  matching the padding convention for scalar `sigma`; the supplied map is not modified.
 - With `physics=None`, RAM 2 is a denoiser: `model(y, sigma=0.1)`.
 
 ### Examples

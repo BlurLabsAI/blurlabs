@@ -366,7 +366,7 @@ def _noise_level(
     if not isinstance(value, torch.Tensor):
         value = torch.ones(b, device=y.device, dtype=y.dtype) * value
     elif value.numel() == 1:
-        value = torch.ones(b, device=y.device, dtype=y.dtype) * value.to(device=y.device, dtype=y.dtype)
+        value = torch.ones(b, device=y.device, dtype=y.dtype) * value.reshape(()).to(device=y.device, dtype=y.dtype)
     value = value.to(device=y.device, dtype=y.dtype)
     return value.view(b, *[1] * (y.ndim - 1)) if value.ndim <= 1 else value
 

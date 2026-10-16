@@ -9,7 +9,7 @@ task, so most of the work is in giving it the right inputs.
 
 ```python
 import deepinv as dinv
-from ram2 import RAM2
+from blurlabs.models import RAM2
 
 model = RAM2()  # downloads the weights; gated: request access on Hugging Face, then `hf auth login` or set HF_TOKEN
 physics = dinv.physics.Blur(filter=dinv.physics.functional.blur.gaussian_blur(sigma=(2.0, 2.0)),

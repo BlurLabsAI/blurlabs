@@ -279,6 +279,11 @@ class _AvgPool2d(nn.Module):
         if k >= h and k >= w:
             return F.adaptive_avg_pool2d(x, 1)
 
+        # Summed-area tables overflow or lose small window differences in low precision.
+        dtype = x.dtype
+        if dtype in (torch.float16, torch.bfloat16):
+            x = x.float()
+
         # fast approximation: box filter on a grid subsampled by the largest divisor r <= 5
         r1 = next(r for r in (5, 4, 3, 2, 1) if h % r == 0)
         r2 = next(r for r in (5, 4, 3, 2, 1) if w % r == 0)
@@ -293,7 +298,7 @@ class _AvgPool2d(nn.Module):
             out = (s[:, :, k1:, k2:] + s[:, :, :-k1, :-k2] - s[:, :, :-k1, k2:] - s[:, :, k1:, :-k2]) / (k1 * k2)
 
         dh, dw = h - out.shape[-2], w - out.shape[-1]
-        return F.pad(out, (dw // 2, (dw + 1) // 2, dh // 2, (dh + 1) // 2), mode="replicate")
+        return F.pad(out, (dw // 2, (dw + 1) // 2, dh // 2, (dh + 1) // 2), mode="replicate").to(dtype)
 
 
 class _EncodingHead(nn.Module):

@@ -404,9 +404,13 @@ def _model_input(
     u = y_all.div_(b_norm)
     b_norm, b_zero = b_norm.view(scalar), b_zero.view(scalar)
 
+    # Keep per-image physics parameters on their original batch grid for each RHS.
+    def apply_physics(operator: Callable, value: torch.Tensor) -> torch.Tensor:
+        return torch.cat([operator(block) for block in value.split(b)], dim=0)
+
     # solver state
     x = torch.zeros(n_total * b, *sig_shape, dtype=dtype, device=device)
-    v = physics.A_adjoint(u)
+    v = apply_physics(physics.A_adjoint, u)
     alpha = norm(v).clamp_min(eps).view(scalar)
     v.div_(alpha)
     alphabar, zetabar = alpha.clone(), alpha.clone()
@@ -424,12 +428,12 @@ def _model_input(
 
     # fixed iteration count, without data-dependent early exit, so that torch.compile generates fast code
     for i in range(int(max_iter)):
-        u = physics.A(v).addcmul_(alpha.view(meas_scalar), u, value=-1)
+        u = apply_physics(physics.A, v).addcmul_(alpha.view(meas_scalar), u, value=-1)
         beta = norm(u).clamp_min(eps)
         u.div_(beta)
         beta = beta.view(scalar)
 
-        v_new = physics.A_adjoint(u).addcmul_(beta, v, value=-1)
+        v_new = apply_physics(physics.A_adjoint, u).addcmul_(beta, v, value=-1)
         alpha_new = norm(v_new).clamp_min(eps)
         v = v_new.div_(alpha_new)
         alpha_new = alpha_new.view(scalar)

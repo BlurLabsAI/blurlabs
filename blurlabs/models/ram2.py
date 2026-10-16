@@ -485,4 +485,6 @@ def _model_input(
         solutions[k] = torch.where(not_filled, last, solutions[k]).masked_fill(b_zero, 0.0)
         variances[k] = torch.where(not_filled, last_variance, variances[k]).masked_fill(b_zero, 0.0)
 
-    return torch.cat(solutions, dim=1), rho_max[:b].pow(2), torch.cat(variances, dim=1).sqrt(), threshold_idx
+    # A zero measurement RHS cannot estimate the norm; retain information from the noise solves.
+    operator_norm = rho_max.view(n_total, b, *main_scalar[1:]).amax(dim=0).pow(2)
+    return torch.cat(solutions, dim=1), operator_norm, torch.cat(variances, dim=1).sqrt(), threshold_idx

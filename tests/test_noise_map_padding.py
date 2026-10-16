@@ -3,7 +3,6 @@ from dataclasses import replace
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 import blurlabs.models.ram2 as ram2
 
@@ -47,9 +46,23 @@ def test_spatial_noise_map_replicates_boundary_without_changing_interior(model, 
     monkeypatch.setattr(ram2, "_model_input", record_input)
     with torch.no_grad():
         output = model(y, sigma=sigma)
-    expected = F.pad(sigma, (29, 0, 33, 0), mode="replicate")
-    torch.testing.assert_close(recorded[0], expected, rtol=0, atol=0)
-    torch.testing.assert_close(recorded[0][..., 33:, 29:], sigma, rtol=0, atol=0)
+    noise = recorded[0]
+    assert noise.shape == (2, 3, 64, 64)
+    # Independent four-region oracle: original interior, first row, first
+    # column, and the top-left corner, without calling a padding helper.
+    torch.testing.assert_close(noise[..., 33:, 29:], sigma, rtol=0, atol=0)
+    torch.testing.assert_close(
+        noise[..., :33, 29:], sigma[..., :1, :].expand(-1, -1, 33, -1),
+        rtol=0, atol=0,
+    )
+    torch.testing.assert_close(
+        noise[..., 33:, :29], sigma[..., :, :1].expand(-1, -1, -1, 29),
+        rtol=0, atol=0,
+    )
+    torch.testing.assert_close(
+        noise[..., :33, :29], sigma[..., :1, :1].expand(-1, -1, 33, 29),
+        rtol=0, atol=0,
+    )
     torch.testing.assert_close(sigma, original_sigma, rtol=0, atol=0)
     assert output.shape == shape
     assert torch.isfinite(output).all()

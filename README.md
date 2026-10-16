@@ -80,6 +80,7 @@ Notes:
   and `l` (Gamma). `sigma` given alone is used as the exact noise standard deviation, scalar or per pixel.
   For denoising, per-pixel maps extend their boundary values into RAM 2's internal padding,
   matching the padding convention for scalar `sigma`; the supplied map is not modified.
+  Single-pixel images retain the existing zero-valued padding for both scalar and map noise levels.
 - With `physics=None`, RAM 2 is a denoiser: `model(y, sigma=0.1)`.
 
 ### Examples

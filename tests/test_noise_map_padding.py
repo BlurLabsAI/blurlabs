@@ -18,7 +18,8 @@ def model(monkeypatch):
 
 
 @pytest.mark.parametrize("shape", [(1, 1, 65, 67), (2, 3, 31, 35),
-                                  (1, 2, 17, 19), (2, 1, 64, 64)])
+                                  (1, 2, 17, 19), (2, 1, 64, 64),
+                                  (1, 1, 1, 1), (2, 3, 1, 1)])
 def test_constant_sigma_map_matches_scalar(model, shape):
     y = torch.linspace(0.1, 0.9, torch.tensor(shape).prod().item()).reshape(shape)
     with torch.no_grad():
@@ -66,3 +67,24 @@ def test_spatial_noise_map_replicates_boundary_without_changing_interior(model, 
     torch.testing.assert_close(sigma, original_sigma, rtol=0, atol=0)
     assert output.shape == shape
     assert torch.isfinite(output).all()
+
+
+@pytest.mark.parametrize("shape", [(1, 1, 1, 1), (2, 3, 1, 1)])
+def test_single_pixel_keeps_legacy_scalar_padding(model, monkeypatch, shape):
+    y = torch.full(shape, 0.5)
+    native_model_input = ram2._model_input
+    recorded = []
+
+    def record_input(y, aty, physics, noise, *args, **kwargs):
+        recorded.append(noise.abs().clone())
+        return native_model_input(y, aty, physics, noise, *args, **kwargs)
+
+    monkeypatch.setattr(ram2, "_model_input", record_input)
+    with torch.no_grad():
+        model(y, sigma=0.1)
+        model(y, sigma=torch.full_like(y, 0.1))
+    for noise in recorded:
+        assert noise.shape == (*shape[:2], 64, 64)
+        assert torch.count_nonzero(noise[..., :-1, :]) == 0
+        assert torch.count_nonzero(noise[..., -1:, :-1]) == 0
+        torch.testing.assert_close(noise[..., -1:, -1:], torch.full_like(y, 0.1))

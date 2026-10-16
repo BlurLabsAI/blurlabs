@@ -434,7 +434,7 @@ def _model_input(
         v = v_new.div_(alpha_new)
         alpha_new = alpha_new.view(scalar)
 
-        rho_rhobar_old = (rho * rhobar).clamp_min(eps)
+        rho_rhobar_old = (rho * rhobar).clamp_min(eps**2)
         rho = torch.sqrt(alphabar * alphabar + beta * beta).clamp_min(eps)
         c = alphabar / rho
         thetanew = beta / rho * alpha_new
@@ -454,7 +454,7 @@ def _model_input(
             rho_min = torch.minimum(rho_min, rho)
 
         hbar_scale = thetabar * rho / rho_rhobar_old
-        x_step = (zeta / (rho * rhobar).clamp_min(eps)) * active.to(zeta.dtype)
+        x_step = (zeta / (rho * rhobar).clamp_min(eps**2)) * active.to(zeta.dtype)
         hbar.mul_(-hbar_scale).add_(h)
         x.addcmul_(hbar, x_step)
         h.mul_(-(thetanew / rho)).add_(v)

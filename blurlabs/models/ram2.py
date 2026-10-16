@@ -154,9 +154,11 @@ class RAM2(Reconstructor, Denoiser):
         sigma = _noise_level(sigma, physics, "sigma", min_sigma, y)
         gain = _noise_level(gain, physics, "gain", min_sigma**2, y)
         l = _noise_level(l, physics, "l", min_sigma ** (-2), y)
-        # an exact sigma map follows a denoising measurement to the padded grid
+        # Extend spatial denoising maps like a scalar sigma; retain the legacy
+        # zero-padded convention when the original image is a single pixel.
         if exact_sigma and sigma.ndim == y.ndim and sigma.shape[2:] == y_shape[2:] and y.shape != y_shape:
-            sigma = F.pad(sigma, (pad[1], 0, pad[0], 0))
+            mode = "constant" if sigma.shape[-2:] == (1, 1) else "replicate"
+            sigma = F.pad(sigma, (pad[1], 0, pad[0], 0), mode=mode)
 
         with torch.no_grad():
             Aty = physics.A_adjoint(y)

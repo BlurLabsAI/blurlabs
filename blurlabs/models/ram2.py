@@ -381,7 +381,7 @@ def _model_input(
     eps: float = 1e-6,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     # iterative least-squares solve on the measurements and the noise realisations stacked along the batch
-    # the iterate is saved when cond(A) ||Ax - y|| / ||e|| crosses each of N thresholds
+    # the iterate is saved when cond(A) ||A^T(Ax - y)|| / (||A|| ||e||) crosses each of N thresholds
     b = Aty.shape[0]
     n_samples = noise.shape[0] // b
     n_total = 1 + n_samples
@@ -460,9 +460,10 @@ def _model_input(
         h.mul_(-(thetanew / rho)).add_(v)
         alpha = alpha_new
 
-        # ||Ax - y|| = |zetabar| ||y||
+        # normal-equation residual ||A^T(Ax - y)|| = |zetabar| ||y|| (Fong & Saunders 2011); dividing by
+        # ||A|| ~ rho_max (A is not normalised, only y) makes the snapshot schedule independent of the scale of A
         cond = (rho_max[:b] / rho_min[:b].clamp_min(eps)).clamp_min(1.0)
-        normalized_error = (zetabar.abs() * b_norm)[:b] / (noise_norm / cond).clamp_min(eps)
+        normalized_error = (zetabar.abs() * b_norm)[:b] / (noise_norm * rho_max[:b] / cond).clamp_min(eps)
         normalized_error = normalized_error.view(b, -1).amax(dim=1)
 
         solution = x[:b] * b_norm[:b]
